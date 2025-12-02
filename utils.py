@@ -9,6 +9,9 @@ from fastapi_mail import FastMail, MessageSchema, MessageType, ConnectionConfig
 from fastapi import Request
 from user_agents import parse  # pip install user-agents
 
+import os
+import resend
+
 # === CONSTANTS ===
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-production-2025-super-long-random-string")
 ALGORITHM = "HS256"
@@ -73,36 +76,28 @@ def generate_device_fingerprint(request: Request) -> str:
 #     TIMEOUT=30
 # )
 
-conf = ConnectionConfig(
-    MAIL_USERNAME="info@auwebx.com",
-    MAIL_PASSWORD="Abdul4303@",  # ← note the @ at the end (Symfony allows it)
-    MAIL_FROM="info@auwebx.com",
-    MAIL_PORT=465,
-    MAIL_SERVER="auwebx.com",  # ← NOT mail.auwebx.com (your host uses domain directly)
-    MAIL_FROM_NAME="AUWEBx App",
-
-    # ← THESE 3 LINES ARE THE MAGIC FIX FOR RENDER + PORT 465
-    MAIL_STARTTLS=False,  # ← MUST BE False on port 465
-    MAIL_SSL_TLS=True,  # ← MUST BE True on port 465 (implicit SSL)
-    USE_CREDENTIALS=True,
-
-    VALIDATE_CERTS=False,  # ← Critical for shared hosting self-signed certs
-    TIMEOUT=60  # ← Give Render time to connect
-)
-
-mail = FastMail(conf)
+# Load API key from environment
+resend.api_key = os.getenv("RESEND_API_KEY")
 
 
-async def send_email(to: str, subject: str, body: str):
-    message = MessageSchema(
-        subject=subject,
-        recipients=[to],
-        body=body,
-        subtype=MessageType.html,
-    )
+
+async def send_email(to: str, subject: str, html: str):
+    """
+    Sends an email using Resend API.
+    Works on Render without SMTP or port issues.
+    """
     try:
-        await mail.send_message(message)
-        print(f"Email sent successfully to {to}")
+        response = resend.Emails.send({
+            "from": "AUWEBx <info@auwebx.com>",   # Your domain email
+            "to": [to],
+            "subject": subject,
+            "html": html
+        })
+
+        print("Email sent:", response)
+        return True
+
     except Exception as e:
-        print(f"SMTP failed: {e}")
+        print("Resend Error:", e)
+        return False
 
