@@ -74,20 +74,24 @@ def generate_device_fingerprint(request: Request) -> str:
 # )
 
 conf = ConnectionConfig(
-    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
-    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
-    MAIL_FROM=os.getenv("MAIL_FROM"),
-    MAIL_PORT=int(os.getenv("MAIL_PORT", 465)),
-    MAIL_SERVER=os.getenv("MAIL_SERVER"),
-    MAIL_FROM_NAME=os.getenv("MAIL_FROM_NAME"),
-    MAIL_STARTTLS=False,
-    MAIL_SSL_TLS=True,
+    MAIL_USERNAME="info@auwebx.com",
+    MAIL_PASSWORD="Abdul4303@",  # ← note the @ at the end (Symfony allows it)
+    MAIL_FROM="info@auwebx.com",
+    MAIL_PORT=465,
+    MAIL_SERVER="auwebx.com",  # ← NOT mail.auwebx.com (your host uses domain directly)
+    MAIL_FROM_NAME="AUWEBx App",
+
+    # ← THESE 3 LINES ARE THE MAGIC FIX FOR RENDER + PORT 465
+    MAIL_STARTTLS=False,  # ← MUST BE False on port 465
+    MAIL_SSL_TLS=True,  # ← MUST BE True on port 465 (implicit SSL)
     USE_CREDENTIALS=True,
-    VALIDATE_CERTS=False,
-    TIMEOUT=int(os.getenv("TIMEOUT", 30))
+
+    VALIDATE_CERTS=False,  # ← Critical for shared hosting self-signed certs
+    TIMEOUT=60  # ← Give Render time to connect
 )
 
 mail = FastMail(conf)
+
 
 async def send_email(to: str, subject: str, body: str):
     message = MessageSchema(
@@ -98,6 +102,7 @@ async def send_email(to: str, subject: str, body: str):
     )
     try:
         await mail.send_message(message)
-        print(f"Email sent → {to}")
+        print(f"Email sent successfully to {to}")
     except Exception as e:
-        print(f"Email failed (non-critical): {e}")
+        print(f"SMTP failed: {e}")
+
